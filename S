@@ -1,0 +1,168 @@
+--------------INSTALL SONARQUBE ON UBUNTU-18.04------------
+
+sudo  sysctl -w vm.max_map_count=262144
+
+sudo apt update && sudo apt upgrade 
+
+sudo apt-get install software-properties-common
+
+sudo apt-get install openjdk-11-jdk -y
+
+sudo apt-get install openjdk-11-jre -y
+
+sudo apt install unzip net-tools vim -y
+
+sudo  sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt/ `lsb_release -cs`-pgdg main" >> /etc/apt/sources.list.d/pgdg.list'
+
+wget -q https://www.postgresql.org/media/keys/ACCC4CF8.asc -O - | sudo apt-key add -
+
+sudo apt-get -y install postgresql postgresql-contrib
+
+sudo adduser sonar
+
+sudo passwd sonar ### optional set passwd ####
+
+sudo mkdir /opt/sonarqube
+
+sudo chown -R sonar:sonar  /opt/sonarqube/
+
+sudo  chmod g+s /opt/sonarqube/
+
+cd /opt/sonarqube
+
+sudo wget https://binaries.sonarsource.com/Distribution/sonarqube/sonarqube-7.9.1.zip
+
+sudo unzip sonarqube-7.9.1.zip -d /opt
+
+cp  -r /opt/sonarqube-7.9.1/*  /opt/sonarqube/
+
+sudo passwd postgres
+
+su postgres
+
+createuser sqube
+
+psql
+
+ALTER USER sqube WITH ENCRYPTED password 'sqube';
+
+CREATE DATABASE sqube OWNER sqube;
+
+\q
+
+exit
+
+sudo vi /opt/sonarqube/conf/sonar.properties ####open the file####
+
+  sonar.jdbc.username=sqube
+  sonar.jdbc.password=sqube
+#####----- PostgreSQL 9.3 or greater ---#####
+ sonar.jdbc.url=jdbc:postgresql://localhost/sqube
+
+ sonar.web.host=127.0.0.1
+ 
+ sonar.web.host=0.0.0.0 ###if u want to allow sonarqube outside#######
+
+ sonar.ce.javaAdditionalOpts=-server  ###save the file###
+
+
+sudo vi /opt/sonarqube/bin/linux-x86-64/sonar.sh
+  RUN_AS_USER=sonar  ####save the file###### 
+
+vi /opt/sonarqube/elasticsearch/config/elasticsearch.yml
+   node.name: ${hostname}
+   network.host: 0.0.0.0 ####save the file######
+
+sudo visudo ####switch as Root user######
+sonar   ALL=(ALL:ALL)  NOPASSWD:  ALL    ####save the file######
+
+su sonar    ##switch as sonar user#######
+
+sh /opt/sonarqube/bin/linux-x86-64/sonar.sh start 
+
+sh /opt/sonarqube/bin/linux-x86-64/sonar.sh status
+
+tail /opt/sonarqube/logs/sonar.log #### to check logs####
+
+netstat -ntulp | grep -i 9000  ######check 9000 port listening#######
+
+---------OPTIONAL----------
+sudo vi /etc/systemd/system/sonar.service
+
+[Unit]
+Description=SonarQube service
+After=syslog.target network.target
+
+[Service]
+Type=forking
+
+ExecStart=/opt/sonarqube/bin/linux-x86-64/sonar.sh start
+ExecStop=/opt/sonarqube/bin/linux-x86-64/sonar.sh stop
+
+User=sonar
+Group=sonar
+Restart=always
+
+LimitNOFILE=65536
+LimitNPROC=4096
+
+
+[Install]
+WantedBy=multi-user.target  #####save the file###
+
+sudo systemctl start sonar
+
+
+-----------Apach2 Reverse Proxy----------
+sudo apt-get install apache2 -y
+
+sudo a2enmod proxy 
+
+sudo a2enmod proxy_http
+
+####create an apache virtual host file for SonarQube with following steps####
+
+sudo vi /etc/apache2/sites-available/sonar.conf
+
+<VirtualHost *:80>
+  ServerName SonarQube serve IP   ###only ip address######
+  ServerAdmin admin@example.com
+  ProxyPreserveHost On
+  ProxyPass / http://127.0.0.1:9000/
+  ProxyPassReverse / http://127.0.0.1:9000/
+  TransferLog /var/log/apache2/sonarm_access.log
+  ErrorLog /var/log/apache2/sonar_error.log
+</VirtualHost> 
+ ####save the file######
+
+sudo a2ensite sonar
+
+sudo  systemctl restart  apache2
+
+sh /opt/sonar/sonarqube/bin/linux-x86-64/sonar.sh restart  
+ 
+            OR
+  sudo systemctl restart sonar
+
+
+
+
+
+########### For Refference sonar.conf file ###########
+
+<VirtualHost *:80>
+  ServerName 104.197.186.179
+  ServerAdmin admin@example.com
+  ProxyPreserveHost On
+  ProxyPass / http://127.0.0.1:9000/
+  ProxyPassReverse / http://127.0.0.1:9000/
+  TransferLog /var/log/apache2/sonarm_access.log
+  ErrorLog /var/log/apache2/sonar_error.log
+</VirtualHost> 
+
+
+#######################################################
+SonarQube Default Cerdentials 
+
+User: admin
+Passwd: admin
