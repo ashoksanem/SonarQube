@@ -1,0 +1,96 @@
+[ Step 1 ]
+        
+        systemctl stop firewalld ; systemctl disable firewalld
+        
+        change SELINUX=disabled in /etc/selinux/config  file
+         
+        yum -y install http://rpms.remirepo.net/enterprise/remi-release-7.rpm yum-utils
+        
+        yum-config-manager --enable remi-php73
+
+[ Step 2 ]
+
+	yum install php php-common php-mysql php-gd php-xml php-mbstring php-mcrypt wget -y
+         
+[ Step 3 ]
+
+vim /etc/yum.repos.d/MariaDB.10x.repo   ##### copy past below lines in file & save it #######
+  [mariadb] 
+  name = MariaDB
+  baseurl = http://yum.mariadb.org/10.3/centos7-amd64
+  gpgkey=https://yum.mariadb.org/RPM-GPG-KEY-MariaDB
+  gpgcheck=1
+
+yum install MariaDB-server MariaDB-client -y
+
+systemctl start mariadb
+
+mysql_secure_installation
+  a. PRESS ENTER
+  b. PRESS Y
+  c. SET ROOT PASSWD
+  d. PRESS ENTER FOR ALL COMMING QUERIES
+
+[ Step 4 ] 
+
+mysql -uroot -p #### ENTER ROOT PASSWD ####
+  CREATE DATABASE wordpressdb;
+  CREATE USER wordpressuser@localhost IDENTIFIED BY 'password';
+  GRANT ALL PRIVILEGES ON wordpressdb.* TO wordpressuser@localhost IDENTIFIED BY 'password';
+  FLUSH PRIVILEGES;
+  exit;
+
+[ Step 5 ]
+
+wget http://wordpress.org/latest.tar.gz
+
+tar -xf latest.tar.gz
+
+sudo rsync -avP wordpress/ /var/www/html/
+
+mkdir /var/www/html/wp-content/uploads
+
+sudo chown -R apache:apache /var/www/html/*
+
+
+[ Step 6 ]
+
+cd /var/www/html
+
+cp wp-config-sample.php wp-config.php
+
+vim wp-config.php  ######## EDIT BELOW LINES WITH YOUR DB SETTINGS ###########
+
+    // ** MySQL settings - You can get this info from your web host ** //  
+    /** The name of the database for WordPress */
+    define('DB_NAME', 'wordpressdb');
+
+    /** MySQL database username */
+    define('DB_USER', 'wordpressuser');
+
+    /** MySQL database password */
+    define('DB_PASSWORD', 'password');
+
+systemctl restart httpd
+
+http://server_domain_name_or_IP  (ACCESS YOUR WORDPRESS)
+
+
+############################### OPTIONAL IF DOMAIN NAME CONFIGURED ###############
+[ Step 7 ]
+
+vim /etc/httpd/conf/httpd.conf  ##### copy past below lines at the end of the file #######
+
+<VirtualHost *:80>
+	ServerAdmin admin@hvthang.xyz
+	DocumentRoot /var/www/html/wordpress
+	ServerName hvthang.xyz
+	ServerAlias www.hvthang.xyz
+	ErrorLog /var/log/httpd/hvthang.xyz-error.log
+	CustomLog /var/log/httpd/hvthang,xyz-acces.log common
+</VirtualHost>
+
+systemctl restart httpd
+
+www.hvthang.xyz (ACCESS YOUR WORDPRESS)
+
